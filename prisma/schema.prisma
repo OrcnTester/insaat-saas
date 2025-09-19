@@ -1,0 +1,71 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Tier {
+  SMALL
+  MID
+  BIG
+}
+
+model Customer {
+  id         String       @id @default(cuid())
+  name       String
+  tier       Tier
+  createdAt  DateTime     @default(now())
+  orders     Order[]
+  shifts     Shift[]
+  ppeChecks  PPECheck[]
+  txns       Transaction[]
+}
+
+model Order {
+  id          String    @id @default(cuid())
+  customerId  String
+  customer    Customer  @relation(fields: [customerId], references: [id])
+  material    String
+  amount      String
+  supplier    String
+  eta         String
+  status      String    @default("ordered") // ordered | pending | delivered
+  createdAt   DateTime  @default(now())
+  deliveryUrl String?
+}
+
+model Shift {
+  id          String    @id @default(cuid())
+  customerId  String
+  customer    Customer  @relation(fields: [customerId], references: [id])
+  workerName  String
+  startAt     DateTime
+  endAt       DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+model PPECheck {
+  id          String    @id @default(cuid())
+  customerId  String
+  customer    Customer  @relation(fields: [customerId], references: [id])
+  helmet      Boolean
+  harness     Boolean
+  ok          Boolean
+  note        String?
+  createdAt   DateTime  @default(now())
+}
+
+model Transaction {
+  id          String    @id @default(cuid())
+  customerId  String
+  customer    Customer  @relation(fields: [customerId], references: [id])
+  kind        String    // "expense" | "income"
+  title       String
+  amountTL    Int
+  createdAt   DateTime  @default(now())
+}
