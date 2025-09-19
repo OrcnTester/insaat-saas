@@ -10,6 +10,14 @@ export default function Page() {
       <header className="card p-5 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white">
         <h1 className="text-2xl font-extrabold">İnşaat SaaS — Demo</h1>
         <p className="opacity-95">Usta için basit — Patron için net.</p>
+        <p align="center">
+          <a href="https://github.com/OrcnTester/insaat-saas" target="_blank">
+            <img src="https://img.shields.io/badge/GitHub-Repo-black?style=for-the-badge&logo=github" alt="GitHub Repo"/>
+          </a>
+          <a href="https://www.linkedin.com/in/orcun-yoruk-355b52147" target="_blank">
+            <img src="https://img.shields.io/badge/LinkedIn-Profile-blue?style=for-the-badge&logo=linkedin" alt="LinkedIn Profile"/>
+          </a>
+        </p>
       </header>
 
       <div className="grid md:grid-cols-2 gap-4">
