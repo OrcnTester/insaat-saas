@@ -65,7 +65,9 @@ npm run dev
 
 ## 📸 Screenshots / Ekran Görüntüleri
 
-> Demo screenshots to be added here (Dashboard, Orders, PPE, Finance).
+<p align="center">
+  <img src="image.png" alt="Orçun | Full-Stack SaaS Developer" width="100%">
+</p>
 
 ---
 
