@@ -1,7 +1,18 @@
+
 # 🏗️ İnşaat SaaS Demo / Construction SaaS Demo
+![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=nextdotjs)
+![Prisma](https://img.shields.io/badge/Prisma-ORM-blue?style=for-the-badge&logo=prisma)
+![Neon](https://img.shields.io/badge/Neon-Postgres-00E599?style=for-the-badge&logo=postgresql&logoColor=white)
+![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.4-blue?style=for-the-badge&logo=tailwindcss)
+![Vercel](https://img.shields.io/badge/Deploy-Vercel-black?style=for-the-badge&logo=vercel)
+![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-Live-success?style=for-the-badge)
 
 Usta için basit, patron için net.  
 Simple for the foreman, clear for the boss.  
+
+## 🚀 Live Demo
+👉 [**Click here to see the app running on Vercel**](https://your-project.vercel.app) 👈  
 
 ---
 
