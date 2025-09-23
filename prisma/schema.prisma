@@ -15,17 +15,37 @@ enum Tier {
   BIG
 }
 
-model Customer {
-  id        String        @id @default(cuid())
-  name      String
-  tier      Tier
-  createdAt DateTime      @default(now())
-  orders    Order[]
-  shifts    Shift[]
-  ppeChecks PPECheck[]
-  txns      Transaction[]
+enum TaskStatus {
+  TODO
+  DOING
+  DONE
+}
 
+model Customer {
+  id          String        @id @default(cuid())
+  name        String
+  tier        Tier
+  createdAt   DateTime      @default(now())
+  orders      Order[]
+  shifts      Shift[]
+  ppeChecks   PPECheck[]
+  txns        Transaction[]
   inventories Inventory[]
+  tasks       Task[]
+}
+
+model Task {
+  id         String     @id @default(cuid())
+  customerId String
+  customer   Customer   @relation(fields: [customerId], references: [id])
+  title      String
+  status     TaskStatus @default(TODO)
+  assignee   String?
+  due        DateTime?
+  priority   Int        @default(0) // büyük olan önce
+  note       String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
 }
 
 model Order {
