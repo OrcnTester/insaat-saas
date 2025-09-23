@@ -1,3 +1,4 @@
+//readme.md
 
 # 🏗️ İnşaat SaaS Demo / Construction SaaS Demo
 ![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=nextdotjs)

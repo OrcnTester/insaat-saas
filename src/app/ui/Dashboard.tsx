@@ -1,3 +1,4 @@
+//src/app/ui/Dashboard.tsx
 "use client";
 import { useEffect, useState } from "react";
 
@@ -5,16 +6,18 @@ export default function Dashboard() {
   const [orders, setOrders] = useState<any[]>([]);
   const [finance, setFinance] = useState<any>({ expense:0, income:0, balance:0, txns:[] });
   const [shifts, setShifts] = useState<any[]>([]);
-
+  const [inv, setInv] = useState<any[]>([]);
   async function load(){
-    const [o,f,s] = await Promise.all([
+    const [o,f,s,i] = await Promise.all([
       fetch("/api/orders").then(r=>r.json()),
       fetch("/api/finance").then(r=>r.json()),
-      fetch("/api/shifts").then(r=>r.json())
+      fetch("/api/shifts").then(r=>r.json()),
+      fetch("/api/inventory").then(r=>r.json()),
     ]);
-    setOrders(o); setFinance(f); setShifts(s);
+    setOrders(o); setFinance(f); setShifts(s); setInv(i);
   }
   useEffect(()=>{ load(); },[]);
+  const critical = inv.filter((x:any)=>x.minQty>0 && x.qty<=x.minQty);
 
   return (
     <div>
@@ -38,7 +41,10 @@ export default function Dashboard() {
           <div className="text-xl font-extrabold">{orders.length}</div>
         </div>
       </div>
-
+      <div className="card p-3">
+        <div className="text-sm opacity-70">Kritik Stok</div>
+        <div className="text-xl font-extrabold">{critical.length}</div>
+      </div>
       <div className="mt-3 grid md:grid-cols-2 gap-3">
         <div className="card p-3">
           <div className="font-bold mb-2">Anlık Olaylar</div>
