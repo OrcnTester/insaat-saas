@@ -7,10 +7,12 @@
     "start": "next start",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "migrate:deploy": "prisma migrate deploy"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "@zxing/browser": "^0.1.5",
     "next": "14.2.4",
     "react": "18.3.1",
     "react-dom": "18.3.1"
