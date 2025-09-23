@@ -1,8 +1,10 @@
+//src/app/page.tsx
 import Orders from "./ui/Orders";
 import Shifts from "./ui/Shifts";
 import PPE from "./ui/PPE";
 import Finance from "./ui/Finance";
 import Dashboard from "./ui/Dashboard";
+import Inventory from "./ui/Inventory";
 
 export default function Page() {
   return (
@@ -41,6 +43,7 @@ export default function Page() {
         <section className="card p-4"><PPE/></section>
         <section className="card p-4"><Finance/></section>
         <section className="card p-4 md:col-span-2"><Dashboard/></section>
+        <section className="card p-4"><Inventory/></section>
       </div>
     </main>
   );

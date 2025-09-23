@@ -1,3 +1,4 @@
+//src/app/ui/Orders.tsx
 "use client";
 import { useEffect, useState } from "react";
 
@@ -21,6 +22,11 @@ export default function Orders() {
       headers:{ "Content-Type":"application/json" },
       body: JSON.stringify(form)
     });
+    await load();
+  }
+
+    async function deliver(id:string){
+    await fetch(`/api/orders/${id}/deliver`, { method:"PATCH" });
     await load();
   }
 
@@ -55,4 +61,19 @@ export default function Orders() {
       </div>
     </div>
   );
+  <div className="mt-4 space-y-2">
+  {orders.map(o=>(
+    <div key={o.id} className="flex justify-between items-center border p-2 rounded-xl gap-3">
+      <div className="min-w-0">
+        {o.material} — <b>{o.amount}</b>
+      </div>
+      <div className="flex items-center gap-2">
+        <div className={`pill ${o.status==="delivered" ? "pill-ok" : "pill-warn"}`}>{o.status}</div>
+        {o.status!=="delivered" && (
+          <button className="btn btn-secondary" onClick={()=>deliver(o.id)}>🚚 Teslim Al</button>
+        )}
+      </div>
+    </div>
+  ))}
+</div>
 }

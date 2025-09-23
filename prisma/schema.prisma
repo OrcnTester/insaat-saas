@@ -16,56 +16,84 @@ enum Tier {
 }
 
 model Customer {
-  id         String       @id @default(cuid())
-  name       String
-  tier       Tier
-  createdAt  DateTime     @default(now())
-  orders     Order[]
-  shifts     Shift[]
-  ppeChecks  PPECheck[]
-  txns       Transaction[]
+  id        String        @id @default(cuid())
+  name      String
+  tier      Tier
+  createdAt DateTime      @default(now())
+  orders    Order[]
+  shifts    Shift[]
+  ppeChecks PPECheck[]
+  txns      Transaction[]
+
+  inventories Inventory[]
 }
 
 model Order {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   customerId  String
-  customer    Customer  @relation(fields: [customerId], references: [id])
+  customer    Customer @relation(fields: [customerId], references: [id])
   material    String
   amount      String
   supplier    String
   eta         String
-  status      String    @default("ordered") // ordered | pending | delivered
-  createdAt   DateTime  @default(now())
+  status      String   @default("ordered") // ordered | pending | delivered
+  createdAt   DateTime @default(now())
   deliveryUrl String?
 }
 
 model Shift {
-  id          String    @id @default(cuid())
-  customerId  String
-  customer    Customer  @relation(fields: [customerId], references: [id])
-  workerName  String
-  startAt     DateTime
-  endAt       DateTime?
-  createdAt   DateTime  @default(now())
+  id         String    @id @default(cuid())
+  customerId String
+  customer   Customer  @relation(fields: [customerId], references: [id])
+  workerName String
+  startAt    DateTime
+  endAt      DateTime?
+  createdAt  DateTime  @default(now())
 }
 
 model PPECheck {
-  id          String    @id @default(cuid())
-  customerId  String
-  customer    Customer  @relation(fields: [customerId], references: [id])
-  helmet      Boolean
-  harness     Boolean
-  ok          Boolean
-  note        String?
-  createdAt   DateTime  @default(now())
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  helmet     Boolean
+  harness    Boolean
+  ok         Boolean
+  note       String?
+  createdAt  DateTime @default(now())
 }
 
 model Transaction {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  kind       String // "expense" | "income"
+  title      String
+  amountTL   Int
+  createdAt  DateTime @default(now())
+}
+
+model Inventory {
+  id         String      @id @default(cuid())
+  customerId String
+  customer   Customer    @relation(fields: [customerId], references: [id])
+  material   String // "Çimento (42,5R)"
+  unit       String // "ton" | "palet" | "adet"
+  qty        Float       @default(0) // mevcut stok
+  minQty     Float       @default(0) // kritik eşik (ör: 5 ton)
+  updatedAt  DateTime    @updatedAt
+  movements  StockMove[]
+
+  @@unique([customerId, material, unit])
+}
+
+model StockMove {
   id          String    @id @default(cuid())
-  customerId  String
-  customer    Customer  @relation(fields: [customerId], references: [id])
-  kind        String    // "expense" | "income"
-  title       String
-  amountTL    Int
+  inventoryId String
+  inventory   Inventory @relation(fields: [inventoryId], references: [id])
+  kind        String // "in" | "out"
+  refType     String? // "order" | "usage" | "manual"
+  refId       String? // bağlanan kaydın id’si (Order.id gibi)
+  qty         Float
+  note        String?
   createdAt   DateTime  @default(now())
 }
