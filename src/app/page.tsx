@@ -31,7 +31,7 @@ export default function Page() {
     <div className="text-center md:text-left md:flex-1">
       <h1 className="text-3xl md:text-4xl font-extrabold">İnşaat SaaS — Demo</h1>
       <p className="text-base md:text-lg opacity-90 mt-3">Herkes için basit • Patron için net</p>
-      <p className="text-sm opacity-80 mt-1">Demo sürüm — geri bildirimleriniz değerli</p>
+      <p className="text-sm opacity-80 mt-1">Demo sürüm kodlanıyor — geri bildirimleriniz değerli</p>
 
       {/* CTA'lar — MOBİL/SMALL ekranlar için burada (desktop'ta gizli) */}
       <div className="mt-6 flex flex-wrap justify-center md:hidden gap-3">
