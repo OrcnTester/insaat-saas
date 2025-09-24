@@ -8,7 +8,7 @@
 ![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 ![Status](https://img.shields.io/badge/Status-Live-success?style=for-the-badge)
 
-Usta için basit, patron için net.\
+Herkes için Basit, Patron için Net.\
 Simple for the foreman, clear for the boss.
 
 ## 🚀 Live Demo
