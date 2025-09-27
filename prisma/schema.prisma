@@ -55,7 +55,7 @@ model Order {
   material    String
   amount      String
   supplier    String
-  eta         String
+  eta         DateTime
   status      String   @default("ordered") // ordered | pending | delivered
   createdAt   DateTime @default(now())
   deliveryUrl String?

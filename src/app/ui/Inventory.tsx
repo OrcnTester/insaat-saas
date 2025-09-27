@@ -1,15 +1,34 @@
-//src/app/ui/Inventory.tsx
+// src/app/ui/Inventory.tsx
 "use client";
 import { useEffect, useMemo, useState } from "react";
 
 type Inv = {
-  id: string;
+  id?: string;
   customerId: string;
   material: string;
   unit: string;
   qty: number;
   minQty: number;
 };
+
+function normalize(raw: any): Inv[] {
+  const arr = Array.isArray(raw)
+    ? raw
+    : Array.isArray(raw?.items)
+    ? raw.items
+    : Array.isArray(raw?.data)
+    ? raw.data
+    : [];
+
+  return arr.map((x: any): Inv => ({
+    id: x.id ?? x.item_id ?? undefined,
+    customerId: String(x.customerId ?? x.customer_id ?? "demo-small"),
+    material: String(x.material ?? x.name ?? x.title ?? "—"),
+    unit: String(x.unit ?? x.uom ?? ""),
+    qty: Number(x.qty ?? x.quantity ?? 0),
+    minQty: Number(x.minQty ?? x.min ?? 0),
+  }));
+}
 
 export default function Inventory() {
   const [items, setItems] = useState<Inv[]>([]);
@@ -18,17 +37,25 @@ export default function Inventory() {
     material: "Çimento (42,5R)",
     unit: "ton",
     qty: 1,
-    kind: "out", // usage default
+    kind: "out" as "in" | "out",
     note: "şantiye tüketim",
   });
 
-  const load = async () =>
-    setItems(await (await fetch("/api/inventory")).json());
+  const load = async () => {
+    try {
+      const r = await fetch("/api/inventory", { cache: "no-store" });
+      const json = await r.json();
+      setItems(normalize(json));
+    } catch {
+      setItems([]);
+    }
+  };
+
   useEffect(() => {
     load();
   }, []);
 
-  async function move(e: any) {
+  async function move(e: React.FormEvent) {
     e.preventDefault();
     await fetch("/api/inventory", {
       method: "POST",
@@ -57,7 +84,7 @@ export default function Inventory() {
       kind,
       note: "etiket",
     });
-    return `inv://move?${q.toString()}`; // inv://move?... (üç slash yok)
+    return `inv://move?${q.toString()}`;
   }
 
   async function copy(text: string) {
@@ -73,7 +100,6 @@ export default function Inventory() {
     <div>
       <h2 className="font-extrabold text-lg mb-2">🏷️ Depo / Stok</h2>
 
-      {/* Kritikler */}
       {critical.length > 0 && (
         <div className="mb-2 p-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm">
           ⚠️ Kritik stok:{" "}
@@ -89,12 +115,12 @@ export default function Inventory() {
               <th className="p-2">Birim</th>
               <th className="p-2">Miktar</th>
               <th className="p-2">Min</th>
-              <th className="p-2">QR</th> {/* 👈 eklendi */}
+              <th className="p-2">QR</th>
             </tr>
           </thead>
           <tbody>
             {items.map((i) => (
-              <tr key={i.id} className="border-t">
+              <tr key={`${i.material}-${i.unit}`} className="border-t">
                 <td className="p-2">{i.material}</td>
                 <td className="p-2">{i.unit}</td>
                 <td className="p-2 font-bold">{i.qty}</td>
@@ -117,16 +143,22 @@ export default function Inventory() {
                 </td>
               </tr>
             ))}
+            {items.length === 0 && (
+              <tr>
+                <td className="p-2 opacity-60" colSpan={5}>
+                  Kayıt yok.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
 
-      {/* Tüketim/Giriş formu */}
       <form onSubmit={move} className="grid md:grid-cols-5 gap-2 mt-3">
         <select
           className="input"
           value={form.kind}
-          onChange={(e) => setForm({ ...form, kind: e.target.value })}
+          onChange={(e) => setForm({ ...form, kind: e.target.value as "in" | "out" })}
         >
           <option value="out">Kullanım (çıkış)</option>
           <option value="in">Giriş (manuel)</option>

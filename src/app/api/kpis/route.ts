@@ -1,19 +1,19 @@
-// src/app/api/kpis/route.ts
-import { NextResponse } from "next/server";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-// TODO: Gerçek veriye bağlamak istersen Prisma ile örnek:
-// import { PrismaClient } from "@prisma/client";
-// const prisma = new PrismaClient();
-// const openOrders = await prisma.order.count({ where: { NOT: { status: "delivered" } } });
-// const activeSites = await prisma.site.count({ where: { isActive: true } });
-// const cashBalance = await prisma.finance.aggregate({ /* gelir-gider toplama */ });
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 export async function GET() {
-  // Demo: hızlı görsel doğrulama için sabit değerler
-  const payload = {
-    activeSites: 3,
-    openOrders: 12,
-    cashBalance: 84500,
-  };
-  return NextResponse.json(payload);
+  try {
+    const [orders, tasks, shifts] = await Promise.all([
+      prisma.order.count(),
+      prisma.task.count(),
+      prisma.shift.count(),
+    ]);
+    return NextResponse.json({ openOrders: orders, tasks, openShifts: shifts });
+  } catch (e:any) {
+    console.error("GET /kpis", e);
+    return NextResponse.json({ error: "server", detail: e.message }, { status: 500 });
+  }
 }

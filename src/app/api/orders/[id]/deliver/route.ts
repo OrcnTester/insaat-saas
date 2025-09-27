@@ -1,53 +1,46 @@
-//src/app/api/orders/[id]/deliver/route.ts
+// src/app/api/orders/route.ts
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { parseAmount } from "@/lib/qty";
 
-export async function PATCH(
-  _req: Request,
-  { params }: { params: { id: string } }
-) {
-  const order = await prisma.order.findUnique({ where: { id: params.id } });
-  if (!order) return NextResponse.json({ error: "not-found" }, { status: 404 });
-
-  // Zaten teslimse tekrar artırma
-  if (order.status === "delivered") {
-    return NextResponse.json(order);
+export async function GET() {
+  try {
+    const rows = await prisma.order.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+    return NextResponse.json(rows);
+  } catch (e: any) {
+    console.error("GET /orders", e);
+    return NextResponse.json({ error: "server", detail: e.message }, { status: 500 });
   }
+}
 
-  const { qty, unit } = parseAmount(order.amount || "");
-  if (!qty || !unit) {
-    return NextResponse.json({ error: "bad-amount" }, { status: 400 });
+export async function POST(req: Request) {
+  try {
+    const data = await req.json().catch(() => null);
+    if (!data) return NextResponse.json({ error: "invalid_json" }, { status: 400 });
+
+    const required = ["customerId", "material", "amount", "supplier", "eta"];
+    for (const k of required) {
+      if (!data?.[k]) return NextResponse.json({ error: `missing ${k}` }, { status: 400 });
+    }
+
+    // eta DateTime ise string -> Date dönüştür (ISO string de kabul edilir ama garantiye alıyoruz)
+    if (typeof data.eta === "string") {
+      const d = new Date(data.eta);
+      if (isNaN(d.valueOf())) {
+        return NextResponse.json({ error: "invalid eta" }, { status: 400 });
+      }
+      data.eta = d;
+    }
+
+    const created = await prisma.order.create({ data });
+    return NextResponse.json(created, { status: 201 });
+  } catch (e: any) {
+    console.error("POST /orders", e);
+    return NextResponse.json({ error: "server", detail: e.message }, { status: 500 });
   }
-
-  // Envanteri güncelle + hareket ekle
-  const inv = await prisma.inventory.upsert({
-    where: {
-      customerId_material_unit: { customerId: order.customerId, material: order.material, unit },
-    },
-    create: { customerId: order.customerId, material: order.material, unit, qty: 0, minQty: 0 },
-    update: {},
-  });
-
-  await prisma.$transaction([
-    prisma.order.update({ where: { id: order.id }, data: { status: "delivered" } }),
-    prisma.inventory.update({
-      where: { id: inv.id },
-      data: {
-        qty: { increment: qty },
-        movements: {
-          create: {
-            kind: "in",
-            refType: "order",
-            refId: order.id,
-            qty,
-            note: `Sipariş teslim: ${order.amount}`,
-          },
-        },
-      },
-    }),
-  ]);
-
-  const updated = await prisma.order.findUnique({ where: { id: order.id } });
-  return NextResponse.json(updated);
 }

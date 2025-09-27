@@ -12,11 +12,7 @@
     "noEmit": true,
     "strict": true,
     "baseUrl": ".",
-    "paths": {
-      "@/*": [
-        "src/*"
-      ]
-    },
+    "paths": { "@/*": ["src/*"] },
     "allowJs": true,
     "skipLibCheck": true,
     "incremental": true,

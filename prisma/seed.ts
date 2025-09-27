@@ -1,124 +1,285 @@
-// prisma/seed.ts
-import { PrismaClient } from "@prisma/client";
-import { parseAmount } from "../src/lib/qty";
+import { PrismaClient, Tier, TaskStatus } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  // 1) Demo müşteri
-  const customer = await prisma.customer.upsert({
-    where: { id: "demo-small" },
-    update: {},
-    create: { id: "demo-small", name: "Demo İnşaat Ltd.", tier: "SMALL" },
+  // Temiz başla (ilişkili tablolarda sıralama önemli)
+  await prisma.stockMove.deleteMany();
+  await prisma.inventory.deleteMany();
+  await prisma.order.deleteMany();
+  await prisma.shift.deleteMany();
+  await prisma.pPECheck.deleteMany();
+  await prisma.transaction.deleteMany();
+  await prisma.task.deleteMany();
+  await prisma.customer.deleteMany();
+
+  // -------- Customers
+  const cSmall = await prisma.customer.create({
+    data: { id: "demo-small", name: "Demo İnşaat - Küçük", tier: Tier.SMALL },
+  });
+  const cMid = await prisma.customer.create({
+    data: { id: "demo-mid", name: "Demonstrasyon A.Ş. - Orta", tier: Tier.MID },
+  });
+  const cBig = await prisma.customer.create({
+    data: { id: "demo-big", name: "Mega İnşaat - Büyük", tier: Tier.BIG },
   });
 
-  // 2) Siparişler
-  const order1 = await prisma.order.create({
-    data: {
-      customerId: customer.id,
-      material: "Çimento (42,5R)",
-      amount: "10 ton",
-      supplier: "AYDINÇİM A.Ş.",
-      eta: "Yarın 14:00",
-      status: "ordered",
-    },
-  });
-
-  const order2 = await prisma.order.create({
-    data: {
-      customerId: customer.id,
-      material: "Tuğla",
-      amount: "500 palet",
-      supplier: "TUĞLASAN",
-      eta: "Haftaya",
-      status: "delivered",
-    },
-  });
-
-  // 3) Finans hareketleri
-  await prisma.transaction.createMany({
-    data: [
-      { customerId: customer.id, kind: "expense", title: "Çimento alımı", amountTL: 38500 },
-      { customerId: customer.id, kind: "expense", title: "Tuğla alımı", amountTL: 120000 },
-      { customerId: customer.id, kind: "income",  title: "Avans Ödemesi", amountTL: 200000 },
-    ],
-  });
-
-  // 4) Vardiya
-  await prisma.shift.create({
-    data: { customerId: customer.id, workerName: "Ali Usta", startAt: new Date() },
-  });
-
-  // 5) PPE kontrolü
-  await prisma.pPECheck.create({
-    data: { customerId: customer.id, helmet: true, harness: false, ok: false, note: "Kemer yok" },
-  });
-
-  // 6) Inventory + StockMove: order2 delivered → Tuğla stoğu gir
-  const { qty: qty2, unit: unit2 } = parseAmount(order2.amount);
-  const invBrick = await prisma.inventory.upsert({
-    where: { customerId_material_unit: { customerId: customer.id, material: order2.material, unit: unit2 } },
-    update: { qty: qty2, minQty: 100 },
-    create: { customerId: customer.id, material: order2.material, unit: unit2, qty: qty2, minQty: 100 },
-  });
-  await prisma.stockMove.create({
-    data: {
-      inventoryId: invBrick.id,
-      kind: "in",
-      refType: "order",
-      refId: order2.id,
-      qty: qty2,
-      note: "Seed: Tuğla siparişi teslim alındı",
-    },
-  });
-
-  // 6b) Kritik olmayan örnek: Taşyün
-  await prisma.inventory.upsert({
-    where: { customerId_material_unit: { customerId: customer.id, material: "Taşyün", unit: "bağ" } },
-    update: { qty: 100, minQty: 0 },
-    create: { customerId: customer.id, material: "Taşyün", unit: "bağ", qty: 100, minQty: 0 },
-  });
-
-  // 6c) 🔥 Kritik stok: Çimento (42,5R) ton → qty 3, min 5
-  const invCement = await prisma.inventory.upsert({
-    where: { customerId_material_unit: { customerId: customer.id, material: "Çimento (42,5R)", unit: "ton" } },
-    update: { qty: 3, minQty: 5 },
-    create: { customerId: customer.id, material: "Çimento (42,5R)", unit: "ton", qty: 3, minQty: 5 },
-  });
-  await prisma.stockMove.create({
-    data: {
-      inventoryId: invCement.id,
-      kind: "in",
-      refType: "seed",
-      qty: 3,
-      note: "Seed: başlangıç çimento stoğu (kritik seviyede)",
-    },
-  });
-
-  // 7) Tasks — overdue / due-today / future / done
-  await prisma.task.deleteMany({ where: { customerId: customer.id } });
-
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const due = (daysFromToday: number, hour = 17) => {
-    const dt = new Date(startOfToday);
-    dt.setDate(dt.getDate() + daysFromToday);
-    dt.setHours(hour, 0, 0, 0);
-    return dt;
-  };
-
+  // -------- Tasks (küçük müşteri ağırlıklı)
   await prisma.task.createMany({
     data: [
-      { customerId: customer.id, title: "2. kat kaba sıva",        status: "TODO",  assignee: "Ali Usta",    due: due(-1, 17), priority: 3, note: "3 daire" },
-      { customerId: customer.id, title: "Elektrik kablo çekimi",   status: "DOING", assignee: "Mehmet Usta", due: due(0, 18),  priority: 2 },
-      { customerId: customer.id, title: "Merdiven korkuluk montajı", status: "TODO",  assignee: null,         due: due(2, 17),  priority: 1 },
-      { customerId: customer.id, title: "Şantiye girişi düzenleme", status: "DONE",  assignee: "Veli Usta",   due: due(-3, 17), priority: 1 },
+      {
+        customerId: cSmall.id,
+        title: "Şantiye giriş kapısı tamiri",
+        status: TaskStatus.TODO,
+        priority: 2,
+        due: addDays(0, 17), // bugün 17:00
+        assignee: "Ali Usta",
+      },
+      {
+        customerId: cSmall.id,
+        title: "Elektrik panosu etiketleme",
+        status: TaskStatus.DOING,
+        priority: 1,
+        due: addDays(1, 12),
+        assignee: "Mehmet",
+      },
+      {
+        customerId: cSmall.id,
+        title: "Beton döküm alanı kontrolü",
+        status: TaskStatus.DONE,
+        priority: 0,
+        due: addDays(-1, 15),
+        assignee: "Ayşe",
+      },
+      {
+        customerId: cMid.id,
+        title: "Malzeme sayımı",
+        status: TaskStatus.TODO,
+        priority: 1,
+        due: addDays(2, 10),
+      },
     ],
   });
 
-  console.log("✅ Seed data yüklendi (kritik stok + tuğla stoğu + geciken/günlük görevler).");
+  // -------- Transactions (gelir/gider)
+  await prisma.transaction.createMany({
+    data: [
+      // demo-small (senin örneklerle uyumlu)
+      {
+        customerId: cSmall.id,
+        kind: "expense",
+        title: "Çimento",
+        amountTL: 38500,
+      },
+      {
+        customerId: cSmall.id,
+        kind: "income",
+        title: "Daire Avans",
+        amountTL: 500000,
+      },
+      // diğer müşteriler
+      {
+        customerId: cMid.id,
+        kind: "expense",
+        title: "Demir (12mm)",
+        amountTL: 92000,
+      },
+      {
+        customerId: cBig.id,
+        kind: "income",
+        title: "Hakediş",
+        amountTL: 1250000,
+      },
+    ],
+  });
+
+  // -------- Orders (eta -> Date objesi, statüler uppercase/open mantığına uygun)
+  await prisma.order.createMany({
+    data: [
+      {
+        customerId: cSmall.id,
+        material: "C25 Beton",
+        amount: "15m³",
+        supplier: "XYZ Hazır Beton",
+        eta: addHours(2), // 2 saat sonra
+        status: "PENDING",
+      },
+      {
+        customerId: cSmall.id,
+        material: "Tuğla (yüksek delikli)",
+        amount: "2 palet",
+        supplier: "Tuğla A.Ş.",
+        eta: addHours(-5),
+        status: "DELIVERED",
+      },
+      {
+        customerId: cMid.id,
+        material: "Demir Ø12",
+        amount: "4 ton",
+        supplier: "DemirSan",
+        eta: addHours(6),
+        status: "PENDING",
+      },
+    ],
+  });
+
+  // -------- Shifts (bir tanesi aktif)
+  await prisma.shift.createMany({
+    data: [
+      {
+        customerId: cSmall.id,
+        workerName: "Ali Usta",
+        startAt: addHours(-3),
+        // endAt yok -> aktif
+      } as any,
+      {
+        customerId: cSmall.id,
+        workerName: "Mehmet",
+        startAt: addHours(-6),
+        endAt: addHours(-2),
+      },
+      {
+        customerId: cMid.id,
+        workerName: "Ayşe",
+        startAt: addHours(-1),
+        // aktif
+      } as any,
+    ],
+  });
+
+  // -------- PPE Checks
+  await prisma.pPECheck.createMany({
+    data: [
+      {
+        customerId: cSmall.id,
+        helmet: true,
+        harness: true,
+        ok: true,
+        note: "Girişte kontrol edildi.",
+      },
+      {
+        customerId: cSmall.id,
+        helmet: true,
+        harness: false,
+        ok: false,
+        note: "Yüksekte çalışma için uyarıldı.",
+      },
+      {
+        customerId: cMid.id,
+        helmet: true,
+        harness: true,
+        ok: true,
+      },
+    ],
+  });
+
+  // -------- Inventories + StockMoves (qty ile tutarlı)
+  // Çimento (42,5R) — torba: 500 giriş, 50 çıkış -> qty 450
+  const invCement = await prisma.inventory.create({
+    data: {
+      customerId: cSmall.id,
+      material: "Çimento (42,5R)",
+      unit: "torba",
+      minQty: 100,
+      qty: 450,
+    },
+  });
+  await prisma.stockMove.createMany({
+    data: [
+      {
+        inventoryId: invCement.id,
+        kind: "in",
+        refType: "manual",
+        qty: 500,
+        note: "Başlangıç stok",
+      },
+      {
+        inventoryId: invCement.id,
+        kind: "out",
+        refType: "usage",
+        qty: 50,
+        note: "Şantiye tüketim",
+      },
+    ],
+  });
+
+  // Alçı — torba: 250 giriş -> qty 250
+  const invAlci = await prisma.inventory.create({
+    data: {
+      customerId: cSmall.id,
+      material: "alçı",
+      unit: "torba",
+      minQty: 50,
+      qty: 250,
+    },
+  });
+  await prisma.stockMove.create({
+    data: {
+      inventoryId: invAlci.id,
+      kind: "in",
+      refType: "manual",
+      qty: 250,
+      note: "Sevkiyat 001",
+    },
+  });
+
+  // Orta müşteri — Demir — ton: 4 giriş -> qty 4
+  const invDemir = await prisma.inventory.create({
+    data: {
+      customerId: cMid.id,
+      material: "Demir",
+      unit: "ton",
+      minQty: 2,
+      qty: 4,
+    },
+  });
+  await prisma.stockMove.create({
+    data: {
+      inventoryId: invDemir.id,
+      kind: "in",
+      refType: "order",
+      qty: 4,
+      note: "İrsaliye #A-102",
+    },
+  });
+
+  // Büyük müşteri — Tuğla — palet: 3 giriş, 1 çıkış -> qty 2
+  const invTugla = await prisma.inventory.create({
+    data: {
+      customerId: cBig.id,
+      material: "Tuğla",
+      unit: "palet",
+      minQty: 1,
+      qty: 2,
+    },
+  });
+  await prisma.stockMove.createMany({
+    data: [
+      { inventoryId: invTugla.id, kind: "in", refType: "manual", qty: 3 },
+      { inventoryId: invTugla.id, kind: "out", refType: "usage", qty: 1 },
+    ],
+  });
+
+  console.log("✅ Seed tamam.");
+}
+
+function addHours(h: number) {
+  const d = new Date();
+  d.setHours(d.getHours() + h);
+  return d;
+}
+function addDays(days: number, hour = 9) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  d.setHours(hour, 0, 0, 0);
+  return d;
 }
 
 main()
-  .catch((e) => { console.error(e); process.exit(1); })
-  .finally(async () => { await prisma.$disconnect(); });
+  .catch((e) => {
+    console.error("❌ Seed hata:", e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

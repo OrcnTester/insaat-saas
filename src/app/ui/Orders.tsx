@@ -9,7 +9,7 @@ export default function Orders() {
     material:"Çimento (42,5R)",
     amount:"10 ton",
     supplier:"AYDINÇİM A.Ş. — 3.850 TL/ton",
-    eta:"Yarın 14:00"
+    eta:"2025-09-27 00:07:14.91"
   });
 
   const load = async()=> setOrders(await (await fetch("/api/orders")).json());
