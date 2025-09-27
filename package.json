@@ -12,15 +12,10 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "postinstall": "prisma generate",
-
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
-<<<<<<< HEAD
-    "migrate:deploy": "prisma migrate deploy"
-=======
     "migrate:deploy": "prisma migrate deploy",
     "db:reset": "prisma migrate reset --force"
->>>>>>> feat/roles-kpis-tasks
   },
 
   "prisma": {
