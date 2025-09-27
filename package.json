@@ -1,5 +1,6 @@
 {
   "name": "insaat-saas",
+  "packageManager: "pnpm@10.2.1"
   "private": true,
 
   "engines": {
