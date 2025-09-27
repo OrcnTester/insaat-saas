@@ -1,27 +1,55 @@
-//src/app/api/shifts/route.ts
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { requireAny, PANELS } from '@/lib/roles';
 
-export async function GET() {
-  const today = new Date();
-  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const shifts = await prisma.shift.findMany({ where: { startAt: { gte: start } }, orderBy: { startAt: "desc" }});
-  return NextResponse.json(shifts);
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+export async function GET(req: Request) {
+  try {
+    if (!requireAny(req, PANELS.shifts)) {
+      return NextResponse.json([], { status: 403 });
+    }
+    const rows = await prisma.shift.findMany({
+      orderBy: { startAt: 'desc' },
+      take: 200,
+    });
+    return NextResponse.json(rows);
+  } catch (e:any) {
+    console.error('GET /shifts', e);
+    return NextResponse.json([], { status: 200 }); // UI patlamasın
+  }
 }
 
 export async function POST(req: Request) {
-  const { customerId, workerName, action } = await req.json();
-  if (!customerId || !workerName || !action) return NextResponse.json({ error: "missing" }, { status: 400 });
+  try {
+    if (!requireAny(req, PANELS.shifts)) {
+      return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+    }
+    const body = await req.json();
+    const { customerId='demo-small', workerName, action } = body || {};
+    if (!workerName || !['start','stop'].includes(action)) {
+      return NextResponse.json({ error: 'missing fields' }, { status: 400 });
+    }
 
-  if (action === "start") {
-    const s = await prisma.shift.create({ data: { customerId, workerName, startAt: new Date() } });
-    return NextResponse.json(s, { status: 201 });
+    if (action === 'start') {
+      const created = await prisma.shift.create({ data: { customerId, workerName, startAt: new Date() }});
+      return NextResponse.json(created, { status: 201 });
+    } else {
+      // Son açık vardiyayı kapat
+      const last = await prisma.shift.findFirst({
+        where: { workerName, endAt: null },
+        orderBy: { startAt: 'desc' },
+      });
+      if (!last) return NextResponse.json({ ok: false });
+      const updated = await prisma.shift.update({
+        where: { id: last.id },
+        data: { endAt: new Date() },
+      });
+      return NextResponse.json(updated);
+    }
+  } catch (e:any) {
+    console.error('POST /shifts', e);
+    return NextResponse.json({ error: 'server', detail: e.message }, { status: 500 });
   }
-  if (action === "stop") {
-    const s = await prisma.shift.findFirst({ where: { customerId, workerName, endAt: null }, orderBy: { startAt: "desc" }});
-    if (!s) return NextResponse.json({ error: "no-active-shift" }, { status: 404 });
-    const u = await prisma.shift.update({ where: { id: s.id }, data: { endAt: new Date() }});
-    return NextResponse.json(u);
-  }
-  return NextResponse.json({ error: "bad-action" }, { status: 400 });
 }

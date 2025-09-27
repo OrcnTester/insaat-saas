@@ -1,42 +1,66 @@
-//src/app/api/finance/route.ts
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { requireAny, PANELS } from '@/lib/roles';
 
-// Bu API içinde gereken minimal alanlar:
-type Txn = { kind: "expense" | "income" | string; amountTL: number };
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  const today = new Date();
-  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+export async function GET(req: Request) {
+  try {
+    if (!requireAny(req, PANELS.finance)) {
+      return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+    }
 
-  // Prisma dönüşünü minimal tipe daraltıyoruz
-  const txns = (await prisma.transaction.findMany({
-    where: { createdAt: { gte: start } },
-    orderBy: { createdAt: "desc" },
-    select: { kind: true, amountTL: true, id: true, title: true, createdAt: true }, // UI'de listeliyoruz
-  })) as Txn[] & any[]; // reduce'da inference için
+    const today = new Date();
+    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const txns = await prisma.transaction.findMany({
+      where: { createdAt: { gte: start } },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
 
-  const expense = txns
-    .filter((t: Txn) => t.kind === "expense")
-    .reduce((sum: number, t: Txn) => sum + t.amountTL, 0);
+    const summary = txns.reduce(
+      (acc, t) => {
+        if (t.kind === 'expense') acc.expense += t.amountTL;
+        else acc.income += t.amountTL;
+        return acc;
+      },
+      { expense: 0, income: 0 }
+    );
+    const balance = summary.income - summary.expense;
 
-  const income = txns
-    .filter((t: Txn) => t.kind === "income")
-    .reduce((sum: number, t: Txn) => sum + t.amountTL, 0);
-
-  return NextResponse.json({ expense, income, balance: income - expense, txns });
+    return NextResponse.json({ ...summary, balance, txns });
+  } catch (e: any) {
+    console.error('GET /finance', e);
+    return NextResponse.json({ error: 'server', detail: e.message }, { status: 500 });
+  }
 }
 
 export async function POST(req: Request) {
-  const { customerId, kind, title, amountTL } = await req.json();
-  if (!customerId || !kind || !title || typeof amountTL !== "number") {
-    return NextResponse.json({ error: "missing" }, { status: 400 });
+  try {
+    if (!requireAny(req, PANELS.finance)) {
+      return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+    }
+
+    const body = await req.json();
+    const { kind, title, amountTL, customerId } = body || {};
+    if (!['expense','income'].includes(kind)) {
+      return NextResponse.json({ error: 'invalid kind' }, { status: 400 });
+    }
+    if (!title || !amountTL) {
+      return NextResponse.json({ error: 'missing fields' }, { status: 400 });
+    }
+    const created = await prisma.transaction.create({
+      data: {
+        customerId: customerId || 'demo-small',
+        kind,
+        title,
+        amountTL: Number(amountTL),
+      },
+    });
+    return NextResponse.json(created, { status: 201 });
+  } catch (e:any) {
+    console.error('POST /finance', e);
+    return NextResponse.json({ error: 'server', detail: e.message }, { status: 500 });
   }
-
-  const t = await prisma.transaction.create({
-    data: { customerId, kind, title, amountTL },
-    select: { id: true, customerId: true, kind: true, title: true, amountTL: true, createdAt: true },
-  });
-
-  return NextResponse.json(t, { status: 201 });
 }

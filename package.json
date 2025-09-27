@@ -7,24 +7,30 @@
     "start": "next start",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "migrate:deploy": "prisma migrate deploy",
+    "db:reset": "prisma migrate reset --force"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@prisma/client": "^5.22.0",
+    "@prisma/client": "5.22.0",
     "@zxing/browser": "^0.1.5",
     "next": "14.2.4",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.55.1",
     "@types/node": "^20.19.17",
     "@types/react": "^18.3.24",
     "@types/react-dom": "^18.3.7",
     "autoprefixer": "10.4.19",
     "postcss": "8.4.32",
-    "prisma": "5.16.2",
+    "prisma": "5.22.0",
     "tailwindcss": "3.4.10",
     "tsx": "4.7.1",
-    "typescript": "5.4.5"
+    "typescript": "^5.4.5"
   }
 }

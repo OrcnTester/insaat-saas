@@ -1,18 +1,74 @@
 // src/app/ui/KpiStrip.tsx
-export default function KpiStrip() {
-  // DEMO değerler – sonra Prisma ile gerçek veriye bağlarız.
-  const data = {
-    activeSites: 3,   // Aktif Şantiye
-    openOrders: 12,   // Açık Sipariş
-    cashBalance: 84500, // Nakit Durumu (₺)
-  };
+"use client";
+import { useEffect, useState } from "react";
 
-  const fmt = new Intl.NumberFormat("tr-TR");
+type FinanceSummary = { expense: number; income: number; balance: number };
+type Order = { status?: string };
+type Shift = { customerId?: string; startAt?: string; endAt?: string };
+
+const fmt = new Intl.NumberFormat("tr-TR");
+
+export default function KpiStrip({ role = "patron" }: { role?: string }) {
+  const [activeSites, setActiveSites] = useState(0);
+  const [openOrders, setOpenOrders] = useState(0);
+  const [cashBalance, setCashBalance] = useState(0);
+
+  useEffect(() => {
+    // Patron değilse sıfırla ve çık
+    if (role !== "patron") {
+      setActiveSites(0);
+      setOpenOrders(0);
+      setCashBalance(0);
+      return;
+    }
+
+    const q = `?role=${role}`; // guard’lar rol paramı bekliyor
+    const today = new Date();
+    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const startMs = start.getTime();
+
+    (async () => {
+      try {
+        // Finans
+        const fRes = await fetch(`/api/finance${q}`, { cache: "no-store" });
+        const fJson: Partial<FinanceSummary> = fRes.ok ? await fRes.json() : {};
+        setCashBalance(Number(fJson?.balance ?? 0));
+
+        // Siparişler
+        const oRes = await fetch(`/api/orders${q}`, { cache: "no-store" });
+        const orders: Order[] = oRes.ok ? await oRes.json() : [];
+        const open = orders.filter((o) => {
+          const st = (o.status ?? "PENDING").toUpperCase();
+          return st !== "DELIVERED" && st !== "DONE" && st !== "CANCELLED";
+        }).length;
+        setOpenOrders(open);
+
+        // Vardiyalar
+        const sRes = await fetch(`/api/shifts${q}`, { cache: "no-store" });
+        const shifts: Shift[] = sRes.ok ? await sRes.json() : [];
+        const siteSet = new Set<string>();
+        for (const s of shifts) {
+          const started = s?.startAt ? new Date(s.startAt).getTime() : NaN;
+          const isToday = Number.isFinite(started) && started >= startMs;
+          const isActive = !s?.endAt;
+          if ((isActive || isToday) && s?.customerId) siteSet.add(s.customerId);
+        }
+        setActiveSites(siteSet.size);
+      } catch {
+        // sessiz düş
+        setActiveSites(0);
+        setOpenOrders(0);
+        setCashBalance(0);
+      }
+    })();
+  }, [role]); // 👈 rol değişince yeniden çalış
+
+  if (role !== "patron") return null;
 
   const items = [
-    { label: "Aktif Şantiye", value: fmt.format(data.activeSites), hint: "Bugün veri girişi olan şantiyeler" },
-    { label: "Açık Sipariş", value: fmt.format(data.openOrders), hint: "Teslim edilmemiş / Onay bekleyen" },
-    { label: "Nakit Durumu", value: `₺${fmt.format(data.cashBalance)}`, hint: "Gelir − Gider (son 7 gün)" },
+    { label: "Aktif Şantiye", value: fmt.format(activeSites), hint: "Bugün veri girişi olan şantiyeler" },
+    { label: "Açık Sipariş", value: fmt.format(openOrders), hint: "Teslim edilmemiş / Onay bekleyen" },
+    { label: "Nakit Durumu", value: `₺${fmt.format(cashBalance)}`, hint: "Gelir − Gider (bugün)" },
   ];
 
   return (
